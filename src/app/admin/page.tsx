@@ -476,9 +476,9 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="flex flex-col gap-8 pb-12 animate-in fade-in duration-500 w-full max-w-5xl mx-auto">
+    <div className="flex flex-col gap-10 pb-12 animate-in fade-in duration-500 w-full max-w-6xl mx-auto">
       <div className="neu-raised rounded-3xl p-6 md:p-8 flex flex-col gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="w-12 h-12 rounded-2xl neu-inset flex items-center justify-center">
             <ShieldCheck className="w-6 h-6 text-(--accent-primary)" />
           </div>
@@ -486,11 +486,11 @@ export default function AdminPage() {
             <h1 className="text-2xl md:text-3xl font-black text-(--text-primary)">
               Admin Control Room
             </h1>
-            <p className="text-(--text-secondary) text-sm">
+            <p className="text-(--text-secondary) text-sm max-w-xl">
               Initialize the devnet lottery config and collection.
             </p>
           </div>
-          <div className="ml-auto hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-(--text-secondary) neu-inset-shallow px-3 py-2 rounded-xl">
+          <div className="ml-auto hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-(--text-secondary) neu-inset-shallow px-3 py-2 rounded-xl">
             {cluster}
           </div>
         </div>
@@ -518,10 +518,10 @@ export default function AdminPage() {
       )}
 
       {isConnected && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-7 neu-raised rounded-3xl p-6 md:p-8 flex flex-col gap-6">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-(--text-secondary)">
+              <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-(--text-secondary)">
                 Lottery Configuration
               </h3>
               <p className="text-(--text-secondary) text-sm mt-2">
@@ -530,7 +530,7 @@ export default function AdminPage() {
               </p>
             </div>
 
-            <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
+            <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.18em] text-(--text-secondary)">
               Lottery ID
               <input
                 type="number"
@@ -550,7 +550,7 @@ export default function AdminPage() {
             </label>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
+              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.18em] text-(--text-secondary)">
                 Start Time (unix)
                 <input
                   type="number"
@@ -560,7 +560,7 @@ export default function AdminPage() {
                   className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-(--text-primary) font-mono"
                 />
               </label>
-              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
+              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.18em] text-(--text-secondary)">
                 End Time (unix)
                 <input
                   type="number"
@@ -573,7 +573,7 @@ export default function AdminPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
-              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
+              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.18em] text-(--text-secondary)">
                 End Offset (seconds)
                 <input
                   type="number"
@@ -591,13 +591,13 @@ export default function AdminPage() {
                 {isFetchingSlot ? "Fetching..." : "Use Current Time"}
               </button>
               {currentSlot !== null && (
-                <span className="text-[10px] uppercase tracking-[0.2em] text-(--text-secondary)">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-(--text-secondary)">
                   Current Time: {currentSlot}
                 </span>
               )}
             </div>
 
-            <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
+            <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.18em] text-(--text-secondary)">
               Ticket Price (lamports)
               <input
                 type="number"
@@ -662,7 +662,7 @@ export default function AdminPage() {
 
           <div className="lg:col-span-5 flex flex-col gap-6">
             <div className="neu-raised rounded-3xl p-6 md:p-7 flex flex-col gap-4">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-(--text-secondary)">
+              <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-(--text-secondary)">
                 Collection Setup
               </h3>
               <p className="text-(--text-secondary) text-sm">
@@ -678,7 +678,7 @@ export default function AdminPage() {
             </div>
 
             <div className="neu-raised rounded-3xl p-6 md:p-7 flex flex-col gap-4">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-(--text-secondary)">
+              <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-(--text-secondary)">
                 Randomness Control
               </h3>
               <p className="text-(--text-secondary) text-sm">
@@ -686,7 +686,7 @@ export default function AdminPage() {
                 this lottery, then reveal after the lottery ends.
               </p>
 
-              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
+              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.18em] text-(--text-secondary)">
                 Token Lottery ID (for commit)
                 <input
                   type="number"
@@ -701,7 +701,7 @@ export default function AdminPage() {
                 </span>
               </label>
 
-              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
+              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.18em] text-(--text-secondary)">
                 Randomness Account
                 <input
                   type="text"
@@ -722,7 +722,7 @@ export default function AdminPage() {
                 </a>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   onClick={handleCreateRandomness}
                   disabled={isSubmitting}
