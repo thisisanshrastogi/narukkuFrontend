@@ -86,6 +86,8 @@ const WalletStateProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [connected, address]);
 
   const handleConnect = async () => {
+    if (connecting || connected) return;
+
     let walletToConnect = wallet;
 
     if (!walletToConnect) {
@@ -111,7 +113,7 @@ const WalletStateProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     try {
-      await connect();
+      await walletToConnect.adapter.connect();
     } catch (error) {
       console.error("Failed to connect wallet:", error);
     }

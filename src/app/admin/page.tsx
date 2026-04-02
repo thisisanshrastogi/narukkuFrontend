@@ -1,10 +1,16 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { ShieldCheck, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import {
+  ShieldCheck,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  ExternalLink,
+} from "lucide-react";
 import { useWallet } from "@/context/WalletContext";
 import * as lotteryService from "@/services/lotteryService";
-import { getCluster } from "@/solana/config";
+import { getCluster, getExplorerAddressUrl } from "@/solana/config";
 import { fetchGlobalStateAccount } from "@/solana/state";
 
 const toNumber = (value: string) => {
@@ -31,6 +37,7 @@ export default function AdminPage() {
   const [currentSlot, setCurrentSlot] = useState<number | null>(null);
   const [isFetchingSlot, setIsFetchingSlot] = useState(false);
   const [lotteryId, setLotteryId] = useState("0");
+  const [tokenLotteryId, setTokenLotteryId] = useState("0");
   const [globalStateCount, setGlobalStateCount] = useState<number | null>(null);
   const [isFetchingGlobalState, setIsFetchingGlobalState] = useState(false);
   const [ticketPrice, setTicketPrice] = useState("");
@@ -38,6 +45,10 @@ export default function AdminPage() {
   const [configTx, setConfigTx] = useState<string | null>(null);
   const [collectionTx, setCollectionTx] = useState<string | null>(null);
   const [globalStateTx, setGlobalStateTx] = useState<string | null>(null);
+  const [randomnessAccount, setRandomnessAccount] = useState("");
+  const [randomnessTx, setRandomnessTx] = useState<string | null>(null);
+  const [commitTx, setCommitTx] = useState<string | null>(null);
+  const [revealTx, setRevealTx] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -58,11 +69,15 @@ export default function AdminPage() {
       setGlobalStateCount(Number.isFinite(count) ? count : null);
       if (Number.isFinite(count)) {
         setLotteryId(String(count));
+        setTokenLotteryId(String(count));
       }
     } finally {
       setIsFetchingGlobalState(false);
     }
   };
+
+  const getCommitLotteryId = () =>
+    tokenLotteryId.trim().length ? tokenLotteryId : lotteryId;
 
   useEffect(() => {
     refreshGlobalState();
@@ -201,6 +216,179 @@ export default function AdminPage() {
       setSuccessMessage("Collection initialized successfully.");
     } else {
       setErrorMessage(result.error || "Initialization failed.");
+    }
+  };
+
+  const handleCreateRandomness = async () => {
+    if (!isConnected) {
+      setErrorMessage("Connect your wallet to continue.");
+      return;
+    }
+
+    resetMessages();
+    setIsSubmitting(true);
+
+    const result = await lotteryService.createRandomnessAccount({
+      wallet: {
+        publicKey,
+        sendTransaction,
+        signTransaction,
+      },
+      connection,
+    });
+    console.log("Result from api ", result);
+
+    setIsSubmitting(false);
+
+    if (result.success && result.randomnessAccount) {
+      setRandomnessAccount(result.randomnessAccount.toBase58());
+      setRandomnessTx(result.txHash || null);
+      setSuccessMessage("Randomness account created.");
+    } else {
+      setErrorMessage(result.error || "Randomness creation failed.");
+    }
+  };
+
+  const handleCreateAndCommitRandomness = async () => {
+    if (!isConnected) {
+      setErrorMessage("Connect your wallet to continue.");
+      return;
+    }
+
+    resetMessages();
+    setIsSubmitting(true);
+
+    const createResult = await lotteryService.createRandomnessAccount({
+      wallet: {
+        publicKey,
+        sendTransaction,
+        signTransaction,
+      },
+      connection,
+    });
+
+    if (!createResult.success || !createResult.randomnessAccount) {
+      setIsSubmitting(false);
+      setErrorMessage(createResult.error || "Randomness creation failed.");
+      return;
+    }
+
+    const createdAccount = createResult.randomnessAccount.toBase58();
+    setRandomnessAccount(createdAccount);
+    setRandomnessTx(createResult.txHash || null);
+
+    const commitLotteryId = toNumber(getCommitLotteryId());
+    if (!Number.isFinite(commitLotteryId) || commitLotteryId < 0) {
+      setIsSubmitting(false);
+      setErrorMessage("Token lottery ID must be a non-negative integer.");
+      return;
+    }
+
+    const commitResult = await lotteryService.commitRandomness({
+      lotteryId: commitLotteryId,
+      randomnessAccount: createdAccount,
+      wallet: {
+        publicKey,
+        sendTransaction,
+        signTransaction,
+        signAllTransactions,
+      },
+      connection,
+    });
+
+    setIsSubmitting(false);
+
+    if (commitResult.success) {
+      setCommitTx(commitResult.txHash || null);
+      setSuccessMessage("Randomness created and connected.");
+    } else {
+      setErrorMessage(commitResult.error || "Commit failed.");
+    }
+  };
+
+  const handleCommitRandomness = async () => {
+    if (!isConnected) {
+      setErrorMessage("Connect your wallet to continue.");
+      return;
+    }
+
+    if (!randomnessAccount) {
+      setErrorMessage("Randomness account is required.");
+      return;
+    }
+
+    resetMessages();
+    setIsSubmitting(true);
+
+    const commitLotteryId = toNumber(getCommitLotteryId());
+    if (!Number.isFinite(commitLotteryId) || commitLotteryId < 0) {
+      setIsSubmitting(false);
+      setErrorMessage("Token lottery ID must be a non-negative integer.");
+      return;
+    }
+
+    const result = await lotteryService.commitRandomness({
+      lotteryId: commitLotteryId,
+      randomnessAccount,
+      wallet: {
+        publicKey,
+        sendTransaction,
+        signTransaction,
+        signAllTransactions,
+      },
+      connection,
+    });
+
+    setIsSubmitting(false);
+
+    if (result.success) {
+      setCommitTx(result.txHash || null);
+      setSuccessMessage("Randomness committed.");
+    } else {
+      setErrorMessage(result.error || "Commit failed.");
+    }
+  };
+
+  const handleRevealWinner = async () => {
+    if (!isConnected) {
+      setErrorMessage("Connect your wallet to continue.");
+      return;
+    }
+
+    if (!randomnessAccount) {
+      setErrorMessage("Randomness account is required.");
+      return;
+    }
+
+    resetMessages();
+    setIsSubmitting(true);
+
+    const commitLotteryId = toNumber(getCommitLotteryId());
+    if (!Number.isFinite(commitLotteryId) || commitLotteryId < 0) {
+      setIsSubmitting(false);
+      setErrorMessage("Token lottery ID must be a non-negative integer.");
+      return;
+    }
+
+    const result = await lotteryService.revealWinner({
+      lotteryId: commitLotteryId,
+      randomnessAccount,
+      wallet: {
+        publicKey,
+        sendTransaction,
+        signTransaction,
+        signAllTransactions,
+      },
+      connection,
+    });
+
+    setIsSubmitting(false);
+
+    if (result.success) {
+      setRevealTx(result.txHash || null);
+      setSuccessMessage("Winner revealed.");
+    } else {
+      setErrorMessage(result.error || "Reveal failed.");
     }
   };
 
@@ -489,6 +677,83 @@ export default function AdminPage() {
               </button>
             </div>
 
+            <div className="neu-raised rounded-3xl p-6 md:p-7 flex flex-col gap-4">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-(--text-secondary)">
+                Randomness Control
+              </h3>
+              <p className="text-(--text-secondary) text-sm">
+                Create a Switchboard v2 randomness account and connect it to
+                this lottery, then reveal after the lottery ends.
+              </p>
+
+              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
+                Token Lottery ID (for commit)
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={tokenLotteryId}
+                  onChange={(event) => setTokenLotteryId(event.target.value)}
+                  className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-(--text-primary) font-mono"
+                />
+                <span className="text-[10px] normal-case tracking-normal text-(--text-secondary)">
+                  Defaults to the main Lottery ID if left unchanged.
+                </span>
+              </label>
+
+              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
+                Randomness Account
+                <input
+                  type="text"
+                  value={randomnessAccount}
+                  onChange={(event) => setRandomnessAccount(event.target.value)}
+                  placeholder="Randomness account pubkey"
+                  className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-(--text-primary) font-mono"
+                />
+              </label>
+              {randomnessAccount && (
+                <a
+                  className="text-[10px] uppercase tracking-[0.2em] text-(--text-secondary) hover:text-(--accent-primary) transition-colors flex items-center gap-1"
+                  href={getExplorerAddressUrl(randomnessAccount)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View Randomness Account <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleCreateRandomness}
+                  disabled={isSubmitting}
+                  className="neu-btn px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-[0.2em]"
+                >
+                  Create Randomness
+                </button>
+                <button
+                  onClick={handleCreateAndCommitRandomness}
+                  disabled={isSubmitting}
+                  className="neu-btn px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-[0.2em]"
+                >
+                  Create + Connect
+                </button>
+                <button
+                  onClick={handleCommitRandomness}
+                  disabled={isSubmitting}
+                  className="neu-btn px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-[0.2em]"
+                >
+                  Commit Randomness
+                </button>
+                <button
+                  onClick={handleRevealWinner}
+                  disabled={isSubmitting}
+                  className="accent-bg px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-[0.2em] text-white"
+                >
+                  Reveal Winner
+                </button>
+              </div>
+            </div>
+
             <div className="neu-inset rounded-3xl p-6 flex flex-col gap-3 text-(--text-secondary) text-sm">
               <div className="text-[11px] uppercase tracking-[0.2em]">
                 Connected Wallet
@@ -522,7 +787,12 @@ export default function AdminPage() {
         </div>
       )}
 
-      {(globalStateTx || configTx || collectionTx) && (
+      {(globalStateTx ||
+        configTx ||
+        collectionTx ||
+        randomnessTx ||
+        commitTx ||
+        revealTx) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {globalStateTx && (
             <a
@@ -552,6 +822,36 @@ export default function AdminPage() {
               rel="noreferrer"
             >
               View collection tx
+            </a>
+          )}
+          {randomnessTx && (
+            <a
+              className="neu-inset rounded-2xl p-4 text-sm text-(--text-secondary) hover:text-(--accent-primary) transition-colors"
+              href={`https://explorer.solana.com/tx/${randomnessTx}?cluster=${explorerCluster}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View randomness create tx
+            </a>
+          )}
+          {commitTx && (
+            <a
+              className="neu-inset rounded-2xl p-4 text-sm text-(--text-secondary) hover:text-(--accent-primary) transition-colors"
+              href={`https://explorer.solana.com/tx/${commitTx}?cluster=${explorerCluster}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View commit randomness tx
+            </a>
+          )}
+          {revealTx && (
+            <a
+              className="neu-inset rounded-2xl p-4 text-sm text-(--text-secondary) hover:text-(--accent-primary) transition-colors"
+              href={`https://explorer.solana.com/tx/${revealTx}?cluster=${explorerCluster}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View reveal winner tx
             </a>
           )}
         </div>

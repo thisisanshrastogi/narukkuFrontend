@@ -8,6 +8,7 @@ export interface Lottery {
   totalTickets: number; // Max tickets available (or tickets sold when unlimited)
   maxTickets: number | null; // null means unlimited
   status: "active" | "upcoming" | "completed";
+  winnerAddress?: string | null;
 }
 
 export interface Ticket {

@@ -165,6 +165,15 @@ export default function LotteryDetailPage() {
                 <span className="text-[var(--text-secondary)] font-mono text-sm mt-2 block opacity-70">
                   ID: {lottery.id}
                 </span>
+                {lottery.winnerAddress && lottery.status === "completed" && (
+                  <div className="mt-3 flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--text-secondary)]">
+                    <span>Winner</span>
+                    <span className="px-2 py-0.5 rounded-lg neu-inset-shallow text-[var(--accent-primary)] font-mono">
+                      {lottery.winnerAddress.slice(0, 4)}...
+                      {lottery.winnerAddress.slice(-4)}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="w-16 h-16 rounded-full neu-inset flex items-center justify-center bg-[var(--background-base)] shrink-0">
                 <Trophy className="w-8 h-8 text-[var(--accent-primary)]" />

@@ -15,6 +15,7 @@
     "@solana/wallet-adapter-react": "^0.15.35",
     "@solana/wallet-adapter-wallets": "^0.16.1",
     "@solana/web3.js": "^1.98.4",
+    "@switchboard-xyz/on-demand": "^1.2.67",
     "lucide-react": "^1.0.0",
     "next": "16.2.1",
     "react": "19.2.4",

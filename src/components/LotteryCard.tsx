@@ -86,6 +86,16 @@ export default function LotteryCard({ lottery }: LotteryCardProps) {
           </div>
         )}
 
+        {lottery.winnerAddress && lottery.status === "completed" && (
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+            <span>Winner</span>
+            <span className="text-[var(--accent-primary)] font-mono">
+              {lottery.winnerAddress.slice(0, 4)}...
+              {lottery.winnerAddress.slice(-4)}
+            </span>
+          </div>
+        )}
+
         {/* Progress bar — clean pill */}
         {hasCap ? (
           <div className="w-full flex flex-col gap-1.5">

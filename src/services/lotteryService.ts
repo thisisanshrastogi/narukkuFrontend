@@ -24,10 +24,12 @@ import {
 } from "@/solana/pdas";
 import { getProgramForWrite } from "@/solana/program";
 import { simulateAndSend } from "@/solana/transactions";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   LAMPORTS_PER_SOL,
   ComputeBudgetProgram,
+  Keypair,
+  PublicKey,
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
   TransactionInstruction,
@@ -35,13 +37,59 @@ import {
 } from "@solana/web3.js";
 import { MOCK_LOTTERIES } from "./mockData";
 import { getInstructionDiscriminator } from "@/solana/idl";
+import { getConnection } from "@/solana/connection";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
 
 const BUY_TICKET_DISCRIMINATOR = getInstructionDiscriminator("buy_ticket");
+const COMMIT_RANDOMNESS_DISCRIMINATOR =
+  getInstructionDiscriminator("commit_randomness");
+const REVEAL_WINNER_DISCRIMINATOR =
+  getInstructionDiscriminator("reveal_winner");
+
+const formatWalletError = (error: unknown) => {
+  if (error instanceof Error) {
+    const anyError = error as { cause?: unknown; error?: unknown };
+    const detail = anyError.cause ?? anyError.error;
+    const detailText = detail ? ` | Details: ${JSON.stringify(detail)}` : "";
+    return `${error.name}: ${error.message}${detailText}`;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  return JSON.stringify(error);
+};
 
 const toNumber = (value: { toString: () => string }) =>
   Number(value.toString());
+
+const resolveWinnerAddress = async (
+  tokenLotteryPda: PublicKey,
+  winnerTicket: { toString: () => string },
+) => {
+  const connection = getConnection();
+  try {
+    const winnerIndex = toNumber(winnerTicket);
+    if (!Number.isFinite(winnerIndex) || winnerIndex < 0) return null;
+
+    const [ticketMint] = getTicketMintPda(tokenLotteryPda, winnerTicket);
+    const largest = await connection.getTokenLargestAccounts(ticketMint);
+    const largestAccount = largest.value[0];
+    if (!largestAccount?.address) return null;
+
+    const tokenAccount = await getAccount(
+      connection,
+      largestAccount.address,
+      "confirmed",
+    );
+    return tokenAccount.owner.toBase58();
+  } catch (error) {
+    console.warn("Failed to resolve winner address.", error);
+    return null;
+  }
+};
 
 const resolveStatus = (
   currentTime: number,
@@ -59,6 +107,7 @@ const mapLottery = (
   >,
   currentTime: number,
   endTimeIso: string,
+  winnerAddress: string | null,
 ): Lottery => {
   const startTime = toNumber(account.startTime);
   const endTime = toNumber(account.endTime);
@@ -79,6 +128,7 @@ const mapLottery = (
     totalTickets,
     maxTickets: resolvedMaxTickets,
     status: resolveStatus(currentTime, startTime, endTime),
+    winnerAddress,
   };
 };
 
@@ -104,12 +154,19 @@ export const getLotteries = async (): Promise<Lottery[]> => {
       const { account } = await fetchTokenLotteryAccount(lotteryId);
       if (!account) return null;
 
+      const winnerAddress = account.winnerChosen
+        ? await resolveWinnerAddress(
+            getTokenLotteryPda(lotteryId)[0],
+            account.winner,
+          )
+        : null;
+
       const endTime = toNumber(account.endTime);
       const endTimeIso = Number.isFinite(endTime)
         ? new Date(endTime * 1000).toISOString()
         : new Date(Date.now()).toISOString();
 
-      return mapLottery(account, currentTime, endTimeIso);
+      return mapLottery(account, currentTime, endTimeIso, winnerAddress);
     }),
   );
 
@@ -513,4 +570,319 @@ export const getLotteryStats = async () => {
     totalParticipants: totalTicketsSold,
     totalTicketsSold,
   };
+};
+
+interface CreateRandomnessInput {
+  wallet: {
+    publicKey: NonNullable<
+      import("@solana/wallet-adapter-react").WalletContextState["publicKey"]
+    > | null;
+    sendTransaction: import("@solana/wallet-adapter-react").WalletContextState["sendTransaction"];
+    signTransaction?: import("@solana/wallet-adapter-react").WalletContextState["signTransaction"];
+  };
+  connection: Connection;
+}
+
+export const createRandomnessAccount = async ({
+  wallet,
+  connection,
+}: CreateRandomnessInput): Promise<{
+  success: boolean;
+  randomnessAccount?: PublicKey;
+  txHash?: string;
+  error?: string;
+}> => {
+  if (!wallet.publicKey) {
+    return { success: false, error: "Wallet not connected" };
+  }
+
+  if (!wallet.signTransaction) {
+    return { success: false, error: "Wallet cannot sign transactions" };
+  }
+
+  const randomnessKeypair = Keypair.generate();
+  try {
+    const response = await fetch("/api/randomness/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        payer: wallet.publicKey.toBase58(),
+        randomness: randomnessKeypair.publicKey.toBase58(),
+        randomnessSecret: Buffer.from(randomnessKeypair.secretKey).toString(
+          "base64",
+        ),
+      }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error:
+          typeof payload.error === "string"
+            ? payload.error
+            : "Randomness account creation failed",
+      };
+    }
+
+    const payload = (await response.json()) as {
+      randomnessAccount: string;
+      instruction: {
+        programId: string;
+        data: string;
+        keys: Array<{
+          pubkey: string;
+          isSigner: boolean;
+          isWritable: boolean;
+        }>;
+      };
+    };
+
+    const createIx = new TransactionInstruction({
+      programId: new PublicKey(payload.instruction.programId),
+      data: Buffer.from(payload.instruction.data, "base64"),
+      keys: payload.instruction.keys.map((key) => ({
+        pubkey: new PublicKey(key.pubkey),
+        isSigner: key.isSigner,
+        isWritable: key.isWritable,
+      })),
+    });
+
+    const randomnessAccount = new PublicKey(payload.randomnessAccount);
+
+    const transaction = new Transaction().add(createIx);
+    transaction.feePayer = wallet.publicKey;
+
+    const latest = await connection.getLatestBlockhash("confirmed");
+    transaction.recentBlockhash = latest.blockhash;
+    transaction.setSigners(wallet.publicKey, randomnessKeypair.publicKey);
+
+    let signedByWallet: Transaction;
+    try {
+      signedByWallet = (await wallet.signTransaction(
+        transaction,
+      )) as Transaction;
+    } catch (error) {
+      throw new Error(formatWalletError(error));
+    }
+
+    signedByWallet.partialSign(randomnessKeypair);
+
+    try {
+      const simulation = await connection.simulateTransaction(signedByWallet, {
+        sigVerify: false,
+      });
+
+      if (simulation.value.err) {
+        const error = JSON.stringify(simulation.value.err);
+        const logs = simulation.value.logs ?? [];
+        const logBlock = logs.length ? `\nLogs:\n${logs.join("\n")}` : "";
+        throw new Error(`Simulation failed: ${error}${logBlock}`);
+      }
+    } catch (error) {
+      const message = formatWalletError(error);
+      if (!message.toLowerCase().includes("invalid arguments")) {
+        throw new Error(message);
+      }
+      console.warn("[createRandomnessAccount] simulation skipped", message);
+    }
+
+    let signature: string;
+    try {
+      signature = await connection.sendRawTransaction(
+        signedByWallet.serialize(),
+        {
+          skipPreflight: true,
+          maxRetries: 3,
+        },
+      );
+    } catch (error) {
+      throw new Error(formatWalletError(error));
+    }
+
+    await connection.confirmTransaction({ signature, ...latest }, "confirmed");
+
+    const accountInfo = await connection.getAccountInfo(
+      randomnessAccount,
+      "confirmed",
+    );
+
+    if (!accountInfo) {
+      throw new Error("Randomness account not found after creation.");
+    }
+
+    if (accountInfo.data.length < 8) {
+      throw new Error("Randomness account data is not initialized.");
+    }
+
+    const expectedOwner = new PublicKey(payload.instruction.programId);
+    if (!accountInfo.owner.equals(expectedOwner)) {
+      throw new Error("Randomness account owner mismatch.");
+    }
+
+    return {
+      success: true,
+      randomnessAccount,
+      txHash: signature,
+    };
+  } catch (error) {
+    console.error("[createRandomnessAccount] failed", error);
+    return {
+      success: false,
+      error: formatWalletError(error) || "Randomness account creation failed",
+    };
+  }
+};
+
+interface RandomnessInstructionInput {
+  lotteryId: number;
+  randomnessAccount: string;
+  wallet: {
+    publicKey: NonNullable<
+      import("@solana/wallet-adapter-react").WalletContextState["publicKey"]
+    > | null;
+    sendTransaction: import("@solana/wallet-adapter-react").WalletContextState["sendTransaction"];
+    signTransaction?: import("@solana/wallet-adapter-react").WalletContextState["signTransaction"];
+    signAllTransactions?: import("@solana/wallet-adapter-react").WalletContextState["signAllTransactions"];
+  };
+  connection: Connection;
+}
+
+export const commitRandomness = async ({
+  lotteryId,
+  randomnessAccount,
+  wallet,
+  connection,
+}: RandomnessInstructionInput): Promise<{
+  success: boolean;
+  txHash?: string;
+  error?: string;
+}> => {
+  if (!wallet.publicKey) {
+    return { success: false, error: "Wallet not connected" };
+  }
+
+  const parsedLotteryId = Number(lotteryId);
+  if (!Number.isFinite(parsedLotteryId) || parsedLotteryId < 0) {
+    return { success: false, error: "Invalid lottery id" };
+  }
+
+  let randomnessPubkey: PublicKey;
+  try {
+    randomnessPubkey = new PublicKey(randomnessAccount);
+  } catch {
+    return { success: false, error: "Invalid randomness account" };
+  }
+
+  const randomnessInfo = await connection.getAccountInfo(
+    randomnessPubkey,
+    "confirmed",
+  );
+
+  if (!randomnessInfo) {
+    return {
+      success: false,
+      error: "Randomness account not found. Create it first.",
+    };
+  }
+
+  if (randomnessInfo.data.length < 8) {
+    return {
+      success: false,
+      error: "Randomness account is not initialized.",
+    };
+  }
+
+  const [tokenLotteryPda] = getTokenLotteryPda(parsedLotteryId);
+
+  const instruction = new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: tokenLotteryPda, isSigner: false, isWritable: true },
+      { pubkey: randomnessPubkey, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.concat([
+      COMMIT_RANDOMNESS_DISCRIMINATOR,
+      new BN(parsedLotteryId).toArrayLike(Buffer, "le", 8),
+    ]),
+  });
+
+  const transaction = new Transaction().add(instruction);
+  transaction.feePayer = wallet.publicKey;
+
+  try {
+    const signature = await simulateAndSend({
+      connection,
+      transaction,
+      sendTransaction: wallet.sendTransaction,
+    });
+
+    return { success: true, txHash: signature };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Commit failed",
+    };
+  }
+};
+
+export const revealWinner = async ({
+  lotteryId,
+  randomnessAccount,
+  wallet,
+  connection,
+}: RandomnessInstructionInput): Promise<{
+  success: boolean;
+  txHash?: string;
+  error?: string;
+}> => {
+  if (!wallet.publicKey) {
+    return { success: false, error: "Wallet not connected" };
+  }
+
+  const parsedLotteryId = Number(lotteryId);
+  if (!Number.isFinite(parsedLotteryId) || parsedLotteryId < 0) {
+    return { success: false, error: "Invalid lottery id" };
+  }
+
+  let randomnessPubkey: PublicKey;
+  try {
+    randomnessPubkey = new PublicKey(randomnessAccount);
+  } catch {
+    return { success: false, error: "Invalid randomness account" };
+  }
+
+  const [tokenLotteryPda] = getTokenLotteryPda(parsedLotteryId);
+
+  const instruction = new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
+      { pubkey: tokenLotteryPda, isSigner: false, isWritable: true },
+      { pubkey: randomnessPubkey, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.concat([
+      REVEAL_WINNER_DISCRIMINATOR,
+      new BN(parsedLotteryId).toArrayLike(Buffer, "le", 8),
+    ]),
+  });
+
+  const transaction = new Transaction().add(instruction);
+  transaction.feePayer = wallet.publicKey;
+
+  try {
+    const signature = await simulateAndSend({
+      connection,
+      transaction,
+      sendTransaction: wallet.sendTransaction,
+    });
+
+    return { success: true, txHash: signature };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Reveal failed",
+    };
+  }
 };

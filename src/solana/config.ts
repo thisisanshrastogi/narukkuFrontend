@@ -2,7 +2,7 @@ import { clusterApiUrl, PublicKey } from "@solana/web3.js";
 import { IDL_ADDRESS } from "./idl";
 
 export const PROGRAM_ID = new PublicKey(
-  "EDDjWR1Prvq6fdiA8Lc9oPC43gPCi4XvpLya8sifmhSy",
+  "137WJawxE2JXE4hCmMRAvurvFFsCv3zWum9xBkmu2erb",
 );
 
 export const TOKEN_METADATA_PROGRAM_ID = new PublicKey(

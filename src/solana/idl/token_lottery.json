@@ -1,5 +1,5 @@
 {
-  "address": "EDDjWR1Prvq6fdiA8Lc9oPC43gPCi4XvpLya8sifmhSy",
+  "address": "137WJawxE2JXE4hCmMRAvurvFFsCv3zWum9xBkmu2erb",
   "metadata": {
     "name": "token_lottery",
     "version": "0.1.0",
@@ -1142,53 +1142,63 @@
     },
     {
       "code": 6003,
+      "name": "RandomnessNotReady",
+      "msg": "The randomness provided is not ready yet."
+    },
+    {
+      "code": 6004,
       "name": "IncorrectRandomnessAccount",
       "msg": "The provided randomness account is incorrect."
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "WinnerChosen",
       "msg": "The winner has already been chosen."
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "LotteryNotCompleted",
       "msg": "The lottery has not completed yet."
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "RandomnessNotResolved",
       "msg": "Randomness is not resolved yet."
     },
     {
-      "code": 6007,
+      "code": 6008,
       "name": "WinnerNotChosen",
       "msg": "The winner has not been chosen yet."
     },
     {
-      "code": 6008,
+      "code": 6009,
       "name": "NotVerifiedTicket",
       "msg": "The provided ticket is not verified as part of the collection."
     },
     {
-      "code": 6009,
+      "code": 6010,
       "name": "IncorrectTicket",
       "msg": "The provided ticket does not match the winning ticket."
     },
     {
-      "code": 6010,
+      "code": 6011,
       "name": "InvalidLotteryId",
       "msg": "Invalid Lottery ID"
     },
     {
-      "code": 6011,
+      "code": 6012,
       "name": "InvalidTime",
       "msg": "Invalid time, end should be greater than start"
     },
     {
-      "code": 6012,
+      "code": 6013,
       "name": "InvalidTicketPrice",
       "msg": "Ticket price must be greater than zero"
+    },
+    {
+      "code": 6014,
+      "name": "NoTicketsSold",
+      "msg": "No tickets were sold for this lottery"
     }
   ],
   "types": [
