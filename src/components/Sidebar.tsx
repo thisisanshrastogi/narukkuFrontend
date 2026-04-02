@@ -3,7 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Ticket, Trophy, Info, User } from "lucide-react";
+import { Home, Ticket, Trophy, Info, User, ShieldCheck } from "lucide-react";
+import { getCluster } from "@/solana/config";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -14,7 +15,14 @@ export default function Sidebar() {
     { name: "My Tickets", href: "/tickets", icon: Ticket },
     { name: "Winners", href: "/winners", icon: Info },
     { name: "Profile", href: "/profile", icon: User },
+    { name: "Admin", href: "/admin", icon: ShieldCheck },
   ];
+
+  const cluster = getCluster();
+  const clusterLabel =
+    cluster === "mainnet-beta"
+      ? "Mainnet"
+      : cluster.charAt(0).toUpperCase() + cluster.slice(1);
 
   return (
     <aside className="w-56 flex-shrink-0 hidden lg:flex flex-col gap-4 h-[calc(100vh-2rem)] sticky top-10">
@@ -33,9 +41,7 @@ export default function Sidebar() {
               key={item.href}
               href={item.href}
               className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
-                isActive
-                  ? "neu-inset"
-                  : "hover:bg-[rgba(255,255,255,0.03)]"
+                isActive ? "neu-inset" : "hover:bg-[rgba(255,255,255,0.03)]"
               }`}
             >
               <div
@@ -66,7 +72,7 @@ export default function Sidebar() {
           <span>Network</span>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full led-success"></div>
-            Mainnet
+            {clusterLabel}
           </div>
         </div>
       </div>

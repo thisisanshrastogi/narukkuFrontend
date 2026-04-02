@@ -1,7 +1,8 @@
 import { clusterApiUrl, PublicKey } from "@solana/web3.js";
+import { IDL_ADDRESS } from "./idl";
 
 export const PROGRAM_ID = new PublicKey(
-  "Ar4mY3kDJB22X3McHMZq7Ncd2JceKpb5S4gASL6Exh8T",
+  "EDDjWR1Prvq6fdiA8Lc9oPC43gPCi4XvpLya8sifmhSy",
 );
 
 export const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
@@ -29,4 +30,10 @@ export const getMaxTickets = () => {
   if (!raw) return 0;
   const parsed = Number(raw);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+export const getExplorerAddressUrl = (address: string) => {
+  const cluster = getCluster();
+  const explorerCluster = cluster === "mainnet-beta" ? "mainnet" : cluster;
+  return `https://explorer.solana.com/address/${address}?cluster=${explorerCluster}`;
 };

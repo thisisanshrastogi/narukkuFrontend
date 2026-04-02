@@ -2,11 +2,12 @@ export interface Lottery {
   id: string;
   name: string;
   jackpot: number; // in SOL
-  ticketPrice: number; // in SOL
+  ticketPrice: number; // in lamports
   endTime: string; // ISO date string
   ticketsSold: number;
-  totalTickets: number; // Max tickets available
-  status: 'active' | 'upcoming' | 'completed';
+  totalTickets: number; // Max tickets available (or tickets sold when unlimited)
+  maxTickets: number | null; // null means unlimited
+  status: "active" | "upcoming" | "completed";
 }
 
 export interface Ticket {
@@ -14,7 +15,7 @@ export interface Ticket {
   lotteryId: string;
   ownerAddress: string;
   purchaseTime: string; // ISO date string
-  status: 'active' | 'won' | 'lost';
+  status: "active" | "won" | "lost";
 }
 
 export interface Winner {

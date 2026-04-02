@@ -12,4 +12,9 @@ export interface TokenLotteryAccount {
   authority: PublicKey;
   randomnessAccount: PublicKey;
   ticketPrice: BN;
+  id: BN;
+}
+
+export interface GlobalStateAccount {
+  lotteryCount: BN;
 }

@@ -2,12 +2,12 @@ import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { getConnection } from "./connection";
 import { PROGRAM_ID } from "./config";
-import { getTokenLotteryPda } from "./pdas";
-import type { TokenLotteryAccount } from "./types";
+import { getGlobalStatePda, getTokenLotteryPda } from "./pdas";
+import type { GlobalStateAccount, TokenLotteryAccount } from "./types";
+import { getAccountDiscriminator } from "./idl";
 
-const TOKEN_LOTTERY_DISCRIMINATOR = Buffer.from([
-  219, 174, 104, 58, 76, 30, 61, 218,
-]);
+const TOKEN_LOTTERY_DISCRIMINATOR = getAccountDiscriminator("TokenLottery");
+const GLOBAL_STATE_DISCRIMINATOR = getAccountDiscriminator("GlobalState");
 
 const readU64 = (buffer: Buffer, offset: number) =>
   new BN(buffer.subarray(offset, offset + 8), "le");
@@ -38,6 +38,8 @@ const decodeTokenLotteryAccount = (data: Buffer): TokenLotteryAccount => {
   const randomnessAccount = new PublicKey(data.subarray(offset, offset + 32));
   offset += 32;
   const ticketPrice = readU64(data, offset);
+  offset += 8;
+  const id = readU64(data, offset);
 
   return {
     bump,
@@ -50,12 +52,23 @@ const decodeTokenLotteryAccount = (data: Buffer): TokenLotteryAccount => {
     authority,
     randomnessAccount,
     ticketPrice,
+    id,
   };
 };
 
-export const fetchTokenLotteryAccount = async () => {
+const decodeGlobalStateAccount = (data: Buffer): GlobalStateAccount => {
+  const discriminator = data.subarray(0, 8);
+  if (!discriminator.equals(GLOBAL_STATE_DISCRIMINATOR)) {
+    throw new Error("Invalid GlobalState discriminator");
+  }
+
+  const lotteryCount = readU64(data, 8);
+  return { lotteryCount };
+};
+
+export const fetchTokenLotteryAccount = async (lotteryId: BN | number) => {
   const connection = getConnection();
-  const [tokenLotteryPda] = getTokenLotteryPda();
+  const [tokenLotteryPda] = getTokenLotteryPda(lotteryId);
 
   try {
     const accountInfo = await connection.getAccountInfo(
@@ -71,7 +84,7 @@ export const fetchTokenLotteryAccount = async () => {
       throw new Error("TokenLottery account owner mismatch");
     }
 
-    if (accountInfo.data.length < 122) {
+    if (accountInfo.data.length < 130) {
       throw new Error("TokenLottery account data too short");
     }
 
@@ -80,5 +93,35 @@ export const fetchTokenLotteryAccount = async () => {
   } catch (error) {
     console.warn("TokenLottery account not found.", error);
     return { account: null, tokenLotteryPda };
+  }
+};
+
+export const fetchGlobalStateAccount = async () => {
+  const connection = getConnection();
+  const [globalStatePda] = getGlobalStatePda();
+
+  try {
+    const accountInfo = await connection.getAccountInfo(
+      globalStatePda,
+      "confirmed",
+    );
+
+    if (!accountInfo) {
+      return { account: null, globalStatePda };
+    }
+
+    if (!accountInfo.owner.equals(PROGRAM_ID)) {
+      throw new Error("GlobalState account owner mismatch");
+    }
+
+    if (accountInfo.data.length < 16) {
+      throw new Error("GlobalState account data too short");
+    }
+
+    const account = decodeGlobalStateAccount(accountInfo.data);
+    return { account, globalStatePda };
+  } catch (error) {
+    console.warn("GlobalState account not found.", error);
+    return { account: null, globalStatePda };
   }
 };

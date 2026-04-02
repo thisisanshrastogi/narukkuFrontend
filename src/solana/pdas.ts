@@ -14,20 +14,37 @@ const toU64Seed = (value: BN | number) => {
   return bn.toArrayLike(Buffer, "le", 8);
 };
 
-export const getTokenLotteryPda = () =>
+const COLLECTION_TOKEN_ACCOUNT_SEED = "collection_associated_token";
+
+export const getTokenLotteryPda = (lotteryId: BN | number) =>
   PublicKey.findProgramAddressSync(
-    [Buffer.from(TOKEN_LOTTERY_SEED)],
+    [Buffer.from(TOKEN_LOTTERY_SEED), toU64Seed(lotteryId)],
     PROGRAM_ID,
   );
 
-export const getCollectionMintPda = () =>
+export const getGlobalStatePda = () =>
+  PublicKey.findProgramAddressSync([Buffer.from("global_state")], PROGRAM_ID);
+
+export const getCollectionMintPda = (tokenLottery: PublicKey) =>
   PublicKey.findProgramAddressSync(
-    [Buffer.from(COLLECTION_MINT_SEED)],
+    [Buffer.from(COLLECTION_MINT_SEED), tokenLottery.toBuffer()],
     PROGRAM_ID,
   );
 
-export const getTicketMintPda = (ticketIndex: BN | number) =>
-  PublicKey.findProgramAddressSync([toU64Seed(ticketIndex)], PROGRAM_ID);
+export const getCollectionTokenAccountPda = (tokenLottery: PublicKey) =>
+  PublicKey.findProgramAddressSync(
+    [Buffer.from(COLLECTION_TOKEN_ACCOUNT_SEED), tokenLottery.toBuffer()],
+    PROGRAM_ID,
+  );
+
+export const getTicketMintPda = (
+  tokenLottery: PublicKey,
+  ticketIndex: BN | number,
+) =>
+  PublicKey.findProgramAddressSync(
+    [Buffer.from("ticket"), tokenLottery.toBuffer(), toU64Seed(ticketIndex)],
+    PROGRAM_ID,
+  );
 
 export const getMetadataPda = (mint: PublicKey) =>
   PublicKey.findProgramAddressSync(

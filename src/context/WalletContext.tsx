@@ -86,17 +86,28 @@ const WalletStateProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [connected, address]);
 
   const handleConnect = async () => {
-    if (!wallet) {
+    let walletToConnect = wallet;
+
+    if (!walletToConnect) {
       const firstInstalled = wallets.find(
         (candidate) => candidate.readyState === WalletReadyState.Installed,
       );
 
       if (!firstInstalled) {
         console.error("No Solana wallet found.");
+        if (typeof window !== "undefined") {
+          window.open("https://phantom.app/", "_blank", "noopener,noreferrer");
+        }
         return;
       }
 
       select(firstInstalled.adapter.name);
+      walletToConnect = firstInstalled;
+    }
+
+    if (walletToConnect.readyState !== WalletReadyState.Installed) {
+      console.error("Wallet is not ready yet.", walletToConnect.readyState);
+      return;
     }
 
     try {

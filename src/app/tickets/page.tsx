@@ -7,6 +7,8 @@ import { useWallet } from "@/context/WalletContext";
 import * as ticketService from "@/services/ticketService";
 import * as lotteryService from "@/services/lotteryService";
 import { Ticket as TicketType, Lottery } from "@/types";
+import { getExplorerAddressUrl } from "@/solana/config";
+import { getTicketMintPda, getTokenLotteryPda } from "@/solana/pdas";
 
 export default function TicketsPage() {
   const { isConnected, address } = useWallet();
@@ -141,12 +143,42 @@ export default function TicketsPage() {
                 </div>
               </div>
 
-              <Link
-                href={`/lotteries/${ticket.lotteryId}`}
-                className="mt-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--accent-primary)] hover:text-[var(--accent-secondary)] flex items-center justify-center gap-1 transition-colors"
-              >
-                View Draw Details <ExternalLink className="w-3 h-3" />
-              </Link>
+              <div className="mt-2 flex flex-col items-center gap-2">
+                <Link
+                  href={`/lotteries/${ticket.lotteryId}`}
+                  className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--accent-primary)] hover:text-[var(--accent-secondary)] flex items-center justify-center gap-1 transition-colors"
+                >
+                  View Draw Details <ExternalLink className="w-3 h-3" />
+                </Link>
+                {(() => {
+                  const ticketNumber = Number(ticket.id.split("-").pop());
+                  const lotteryIdNumber = Number(ticket.lotteryId);
+                  const ticketIndex = Number.isFinite(ticketNumber)
+                    ? Math.max(ticketNumber - 1, 0)
+                    : null;
+                  if (
+                    ticketIndex === null ||
+                    !Number.isFinite(lotteryIdNumber)
+                  ) {
+                    return null;
+                  }
+                  const [lotteryPda] = getTokenLotteryPda(lotteryIdNumber);
+                  const [ticketMint] = getTicketMintPda(
+                    lotteryPda,
+                    ticketIndex,
+                  );
+                  return (
+                    <Link
+                      href={getExplorerAddressUrl(ticketMint.toBase58())}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] flex items-center gap-1"
+                    >
+                      View Ticket NFT <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  );
+                })()}
+              </div>
             </div>
           ))}
         </div>

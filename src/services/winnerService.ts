@@ -8,9 +8,13 @@ import {
   getTicketOwnerAta,
   getTokenLotteryPda,
 } from "@/solana/pdas";
-import { fetchTokenLotteryAccount } from "@/solana/state";
+import {
+  fetchGlobalStateAccount,
+  fetchTokenLotteryAccount,
+} from "@/solana/state";
 import { simulateAndSend } from "@/solana/transactions";
 import { getAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { BN } from "@coral-xyz/anchor";
 import {
   LAMPORTS_PER_SOL,
   PublicKey,
@@ -20,13 +24,12 @@ import {
 } from "@solana/web3.js";
 import { PROGRAM_ID, TOKEN_METADATA_PROGRAM_ID } from "@/solana/config";
 import { MOCK_WINNERS } from "./mockData";
+import { getInstructionDiscriminator } from "@/solana/idl";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
 
-const LOTTERY_ID = "token-lottery";
-const CLAIM_WINNINGS_DISCRIMINATOR = Buffer.from([
-  161, 215, 24, 59, 14, 236, 242, 221,
-]);
+const CLAIM_WINNINGS_DISCRIMINATOR =
+  getInstructionDiscriminator("claim_winnings");
 
 const toNumber = (value: { toString: () => string }) =>
   Number(value.toString());
@@ -34,39 +37,55 @@ const toNumber = (value: { toString: () => string }) =>
 export const getRecentWinners = async (): Promise<Winner[]> => {
   if (USE_MOCK) return MOCK_WINNERS;
 
-  const { account } = await fetchTokenLotteryAccount();
-  if (!account || !account.winnerChosen) return [];
+  const { account: globalState } = await fetchGlobalStateAccount();
+  if (!globalState) return [];
 
   const connection = getConnection();
-  const [ticketMint] = getTicketMintPda(account.winner);
+  const totalLotteries = toNumber(globalState.lotteryCount);
 
-  let winnerAddress = "Unknown";
-  try {
-    const largest = await connection.getTokenLargestAccounts(ticketMint);
-    const largestAccount = largest.value[0];
-    if (largestAccount?.address) {
-      const tokenAccount = await getAccount(
-        connection,
-        largestAccount.address,
-        "confirmed",
-      );
-      winnerAddress = tokenAccount.owner.toBase58();
-    }
-  } catch (error) {
-    console.warn("Failed to resolve winner address.", error);
-  }
+  const winners = await Promise.all(
+    [...Array(totalLotteries).keys()].map(async (lotteryId) => {
+      const { account, tokenLotteryPda } =
+        await fetchTokenLotteryAccount(lotteryId);
+      if (!account || !account.winnerChosen) return null;
 
-  return [
-    {
-      id: "winner-current",
-      lotteryId: LOTTERY_ID,
-      lotteryName: getLotteryName(),
-      winnerAddress,
-      prizeAmount: toNumber(account.lotteryPotAmount) / LAMPORTS_PER_SOL,
-      drawDate: new Date(toNumber(account.endTime) * 1000).toISOString(),
-      claimed: false,
-    },
-  ];
+      const [ticketMint] = getTicketMintPda(tokenLotteryPda, account.winner);
+      let winnerAddress = "Unknown";
+      try {
+        const largest = await connection.getTokenLargestAccounts(ticketMint);
+        const largestAccount = largest.value[0];
+        if (largestAccount?.address) {
+          const tokenAccount = await getAccount(
+            connection,
+            largestAccount.address,
+            "confirmed",
+          );
+          winnerAddress = tokenAccount.owner.toBase58();
+        }
+      } catch (error) {
+        console.warn("Failed to resolve winner address.", error);
+      }
+
+      const endTime = toNumber(account.endTime);
+      const drawDate = Number.isFinite(endTime)
+        ? new Date(endTime * 1000).toISOString()
+        : new Date(Date.now()).toISOString();
+
+      return {
+        id: `winner-${lotteryId}`,
+        lotteryId: String(lotteryId),
+        lotteryName: `${getLotteryName()} #${lotteryId}`,
+        winnerAddress,
+        prizeAmount: toNumber(account.lotteryPotAmount) / LAMPORTS_PER_SOL,
+        drawDate,
+        claimed: false,
+      } as Winner;
+    }),
+  );
+
+  return winners
+    .filter((winner): winner is Winner => Boolean(winner))
+    .sort((a, b) => Number(b.lotteryId) - Number(a.lotteryId));
 };
 
 export const checkWinnings = async (
@@ -75,38 +94,64 @@ export const checkWinnings = async (
   if (!walletAddress) return [];
   if (USE_MOCK) return MOCK_WINNERS.filter((w) => !w.claimed);
 
-  const { account } = await fetchTokenLotteryAccount();
-  if (!account || !account.winnerChosen) return [];
+  const { account: globalState } = await fetchGlobalStateAccount();
+  if (!globalState) return [];
 
   const connection = getConnection();
-  const [ticketMint] = getTicketMintPda(account.winner);
   const owner = new PublicKey(walletAddress);
-  const destination = await getTicketOwnerAta(owner, ticketMint, TOKEN_PROGRAM_ID);
+  const totalLotteries = toNumber(globalState.lotteryCount);
 
-  try {
-    const tokenAccount = await getAccount(connection, destination, "confirmed");
-    if (!tokenAccount.amount || tokenAccount.amount === BigInt(0)) {
-      return [];
-    }
-  } catch {
-    return [];
-  }
+  const winnings = await Promise.all(
+    [...Array(totalLotteries).keys()].map(async (lotteryId) => {
+      const { account, tokenLotteryPda } =
+        await fetchTokenLotteryAccount(lotteryId);
+      if (!account || !account.winnerChosen) return null;
 
-  return [
-    {
-      id: "winner-current",
-      lotteryId: LOTTERY_ID,
-      lotteryName: getLotteryName(),
-      winnerAddress: walletAddress,
-      prizeAmount: toNumber(account.lotteryPotAmount) / LAMPORTS_PER_SOL,
-      drawDate: new Date(toNumber(account.endTime) * 1000).toISOString(),
-      claimed: false,
-    },
-  ];
+      const [ticketMint] = getTicketMintPda(tokenLotteryPda, account.winner);
+      const destination = await getTicketOwnerAta(
+        owner,
+        ticketMint,
+        TOKEN_PROGRAM_ID,
+      );
+
+      try {
+        const tokenAccount = await getAccount(
+          connection,
+          destination,
+          "confirmed",
+        );
+        if (!tokenAccount.amount || tokenAccount.amount === BigInt(0)) {
+          return null;
+        }
+      } catch {
+        return null;
+      }
+
+      const endTime = toNumber(account.endTime);
+      const drawDate = Number.isFinite(endTime)
+        ? new Date(endTime * 1000).toISOString()
+        : new Date(Date.now()).toISOString();
+
+      return {
+        id: `winner-${lotteryId}`,
+        lotteryId: String(lotteryId),
+        lotteryName: `${getLotteryName()} #${lotteryId}`,
+        winnerAddress: walletAddress,
+        prizeAmount: toNumber(account.lotteryPotAmount) / LAMPORTS_PER_SOL,
+        drawDate,
+        claimed: false,
+      } as Winner;
+    }),
+  );
+
+  return winnings
+    .filter((winner): winner is Winner => Boolean(winner))
+    .sort((a, b) => Number(b.lotteryId) - Number(a.lotteryId));
 };
 
 interface ClaimInput {
   winnerId: string;
+  lotteryId: string;
   walletAddress: string;
   wallet: {
     publicKey: NonNullable<
@@ -121,6 +166,7 @@ interface ClaimInput {
 
 export const claimPrize = async ({
   winnerId,
+  lotteryId,
   walletAddress,
   wallet,
   connection,
@@ -129,8 +175,13 @@ export const claimPrize = async ({
   txHash?: string;
   error?: string;
 }> => {
-  if (winnerId !== "winner-current") {
+  if (!winnerId) {
     return { success: false, error: "Winner record not found" };
+  }
+
+  const parsedLotteryId = Number(lotteryId);
+  if (!Number.isFinite(parsedLotteryId) || parsedLotteryId < 0) {
+    return { success: false, error: "Invalid lottery id" };
   }
 
   if (!wallet.publicKey) {
@@ -145,15 +196,15 @@ export const claimPrize = async ({
     return { success: false, error: "Wallet mismatch" };
   }
 
-  const { account } = await fetchTokenLotteryAccount();
+  const { account } = await fetchTokenLotteryAccount(parsedLotteryId);
   if (!account) {
     return { success: false, error: "Lottery account not initialized" };
   }
 
-  const [tokenLottery] = getTokenLotteryPda();
-  const [collectionMint] = getCollectionMintPda();
+  const [tokenLottery] = getTokenLotteryPda(parsedLotteryId);
+  const [collectionMint] = getCollectionMintPda(tokenLottery);
   const [collectionMetadata] = getMetadataPda(collectionMint);
-  const [ticketMint] = getTicketMintPda(account.winner);
+  const [ticketMint] = getTicketMintPda(tokenLottery, account.winner);
   const [metadata] = getMetadataPda(ticketMint);
   const destination = await getTicketOwnerAta(
     wallet.publicKey,
@@ -179,7 +230,10 @@ export const claimPrize = async ({
         isWritable: false,
       },
     ],
-    data: CLAIM_WINNINGS_DISCRIMINATOR,
+    data: Buffer.concat([
+      CLAIM_WINNINGS_DISCRIMINATOR,
+      new BN(parsedLotteryId).toArrayLike(Buffer, "le", 8),
+    ]),
   });
 
   const transaction = new Transaction().add(instruction);

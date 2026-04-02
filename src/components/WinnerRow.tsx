@@ -46,8 +46,8 @@ export default function WinnerRow({ winner }: WinnerRowProps) {
           </span>
           <span className="text-sm md:text-base font-semibold text-[var(--text-primary)] font-mono truncate">
             {winner.prizeAmount.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
+              minimumFractionDigits: 6,
+              maximumFractionDigits: 6,
             })}
           </span>
         </div>

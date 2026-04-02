@@ -1,3 +1,4 @@
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { Lottery, Ticket, Winner } from "../types";
 
 // ── Mock Lotteries ──
@@ -6,65 +7,73 @@ const now = Date.now();
 const hour = 3_600_000;
 const day = 24 * hour;
 
+const toLamports = (sol: number) => Math.round(sol * LAMPORTS_PER_SOL);
+
 export const MOCK_LOTTERIES: Lottery[] = [
   {
     id: "sol-mega-jackpot",
     name: "SOL Mega Jackpot",
     jackpot: 2450.5,
-    ticketPrice: 0.5,
+    ticketPrice: toLamports(0.5),
     endTime: new Date(now + 2 * day + 14 * hour).toISOString(),
     ticketsSold: 3427,
     totalTickets: 5000,
+    maxTickets: 5000,
     status: "active",
   },
   {
     id: "phantom-weekly",
     name: "Phantom Weekly Draw",
     jackpot: 820.0,
-    ticketPrice: 0.1,
+    ticketPrice: toLamports(0.1),
     endTime: new Date(now + 5 * day).toISOString(),
     ticketsSold: 1890,
     totalTickets: 10000,
+    maxTickets: 10000,
     status: "active",
   },
   {
     id: "degen-rush",
     name: "Degen Rush",
     jackpot: 150.75,
-    ticketPrice: 0.25,
+    ticketPrice: toLamports(0.25),
     endTime: new Date(now + 12 * hour).toISOString(),
     ticketsSold: 580,
     totalTickets: 1000,
+    maxTickets: 1000,
     status: "active",
   },
   {
     id: "community-pool-v2",
     name: "Community Pool V2",
     jackpot: 4100.0,
-    ticketPrice: 1.0,
+    ticketPrice: toLamports(1.0),
     endTime: new Date(now + 10 * day).toISOString(),
     ticketsSold: 312,
     totalTickets: 2000,
+    maxTickets: 2000,
     status: "upcoming",
   },
   {
     id: "solana-holiday-special",
     name: "Solana Holiday Special",
     jackpot: 12750.0,
-    ticketPrice: 2.0,
+    ticketPrice: toLamports(2.0),
     endTime: new Date(now - 3 * day).toISOString(),
     ticketsSold: 5000,
     totalTickets: 5000,
+    maxTickets: 5000,
     status: "completed",
   },
   {
     id: "micro-lotto-daily",
     name: "Micro Lotto Daily",
     jackpot: 32.5,
-    ticketPrice: 0.01,
+    ticketPrice: toLamports(0.01),
     endTime: new Date(now - 1 * day).toISOString(),
     ticketsSold: 9800,
     totalTickets: 10000,
+    maxTickets: 10000,
     status: "completed",
   },
 ];

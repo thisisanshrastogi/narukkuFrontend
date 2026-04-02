@@ -9,11 +9,16 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useWallet } from "@/context/WalletContext";
 import * as lotteryService from "@/services/lotteryService";
 import { Lottery } from "@/types";
 import CountdownTimer from "@/components/CountdownTimer";
 import TicketSelector from "@/components/TicketSelector";
+import { getExplorerAddressUrl } from "@/solana/config";
+import { getTokenLotteryPda } from "@/solana/pdas";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 export default function LotteryDetailPage() {
   const { id } = useParams();
@@ -45,6 +50,7 @@ export default function LotteryDetailPage() {
       if (typeof id !== "string") return;
       setIsLoading(true);
       const data = await lotteryService.getLotteryById(id);
+      console.debug("[LotteryDetail] fetched lottery", { id, data });
       setLottery(data || null);
       setIsLoading(false);
     };
@@ -58,8 +64,9 @@ export default function LotteryDetailPage() {
     }
     if (!lottery) return;
 
-    const totalCost = ticketCount * lottery.ticketPrice;
-    if (balance < totalCost) {
+    const totalCostLamports = ticketCount * lottery.ticketPrice;
+    const balanceLamports = Math.round(balance * LAMPORTS_PER_SOL);
+    if (balanceLamports < totalCostLamports) {
       setBuyStatus("error");
       setErrorMessage("Insufficient SOL balance.");
       return;
@@ -116,12 +123,24 @@ export default function LotteryDetailPage() {
     );
   }
 
-  const percentFilled = Math.min(
-    100,
-    Math.round((lottery.ticketsSold / lottery.totalTickets) * 100),
-  );
-  const totalCost = ticketCount * lottery.ticketPrice;
-  const isSoldOut = lottery.ticketsSold >= lottery.totalTickets;
+  const ticketPriceSol = lottery.ticketPrice / LAMPORTS_PER_SOL;
+  const totalCostSol = (ticketCount * lottery.ticketPrice) / LAMPORTS_PER_SOL;
+
+  const hasCap = lottery.maxTickets !== null && lottery.maxTickets > 0;
+  const percentFilled = hasCap
+    ? Math.min(
+        100,
+        Math.round((lottery.ticketsSold / lottery.totalTickets) * 100),
+      )
+    : 0;
+  const isSoldOut = hasCap && lottery.ticketsSold >= lottery.totalTickets;
+  const maxSelectableTickets = hasCap
+    ? lottery.totalTickets - lottery.ticketsSold
+    : 999;
+  const lotteryIdNumber = Number(lottery.id);
+  const lotteryPda = Number.isFinite(lotteryIdNumber)
+    ? getTokenLotteryPda(lotteryIdNumber)[0]
+    : null;
 
   return (
     <div className="flex flex-col gap-8 pb-12 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
@@ -158,8 +177,8 @@ export default function LotteryDetailPage() {
               </span>
               <h2 className="text-5xl md:text-7xl font-black accent-text tracking-tighter drop-shadow-sm font-mono z-10">
                 {lottery.jackpot.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
+                  minimumFractionDigits: 6,
+                  maximumFractionDigits: 6,
                 })}
               </h2>
               <span className="text-2xl md:text-3xl text-[var(--accent-primary)] font-bold mt-2 z-10">
@@ -172,28 +191,49 @@ export default function LotteryDetailPage() {
 
             {/* Progress Bar (Tickets Sold) */}
             <div className="w-full mt-4 flex flex-col gap-3">
-              <div className="flex justify-between text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                <span>
-                  {lottery.ticketsSold.toLocaleString()} /{" "}
-                  {lottery.totalTickets.toLocaleString()} Tickets Sold
-                </span>
-                <span
-                  className={
-                    percentFilled >= 90 ? "text-[var(--accent-secondary)]" : ""
-                  }
-                >
-                  {percentFilled}% Filled
-                </span>
-              </div>
-              <div className="h-6 w-full neu-inset rounded-full overflow-hidden p-[3px]">
-                <div
-                  className="h-full rounded-full accent-bg relative min-w-[2%] transition-all duration-1000 ease-out"
-                  style={{ width: `${percentFilled}%` }}
-                >
-                  <div className="absolute top-0 left-0 right-0 h-1/2 bg-white opacity-20 rounded-t-full"></div>
+              {hasCap ? (
+                <>
+                  <div className="flex justify-between text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                    <span>
+                      {lottery.ticketsSold.toLocaleString()} /{" "}
+                      {lottery.totalTickets.toLocaleString()} Tickets Sold
+                    </span>
+                    <span
+                      className={
+                        percentFilled >= 90
+                          ? "text-[var(--accent-secondary)]"
+                          : ""
+                      }
+                    >
+                      {percentFilled}% Filled
+                    </span>
+                  </div>
+                  <div className="h-6 w-full neu-inset rounded-full overflow-hidden p-[3px]">
+                    <div
+                      className="h-full rounded-full accent-bg relative min-w-[2%] transition-all duration-1000 ease-out"
+                      style={{ width: `${percentFilled}%` }}
+                    >
+                      <div className="absolute top-0 left-0 right-0 h-1/2 bg-white opacity-20 rounded-t-full"></div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                  <span>Tickets Sold</span>
+                  <span>{lottery.ticketsSold.toLocaleString()}</span>
                 </div>
-              </div>
+              )}
             </div>
+            {lotteryPda && (
+              <Link
+                href={getExplorerAddressUrl(lotteryPda.toBase58())}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] hover:text-[var(--accent-primary)] flex items-center gap-1"
+              >
+                View Lottery Account <ExternalLink className="w-3 h-3" />
+              </Link>
+            )}
           </div>
 
           {/* Countdown Block */}
@@ -231,14 +271,16 @@ export default function LotteryDetailPage() {
                   <TicketSelector
                     count={ticketCount}
                     setCount={setTicketCount}
-                    max={lottery.totalTickets - lottery.ticketsSold}
+                    max={Math.max(maxSelectableTickets, 1)}
                   />
                 </div>
 
                 <div className="neu-inset-shallow rounded-2xl p-6 flex flex-col gap-3">
                   <div className="flex justify-between items-center text-sm font-bold text-[var(--text-secondary)]">
                     <span>Ticket Price</span>
-                    <span className="font-mono">{lottery.ticketPrice} SOL</span>
+                    <span className="font-mono">
+                      {ticketPriceSol.toFixed(6)} SOL
+                    </span>
                   </div>
                   <div className="w-full h-px border-b border-dashed border-[rgba(43,43,43,0.18)]"></div>
                   <div className="flex justify-between items-end">
@@ -247,7 +289,7 @@ export default function LotteryDetailPage() {
                     </span>
                     <div className="flex flex-col items-end">
                       <span className="text-3xl font-black text-[var(--text-primary)] font-mono leading-none tracking-tighter">
-                        {totalCost.toFixed(2)}
+                        {totalCostSol.toFixed(6)}
                       </span>
                       <span className="text-[var(--accent-primary)] font-bold mt-1 text-sm">
                         SOL

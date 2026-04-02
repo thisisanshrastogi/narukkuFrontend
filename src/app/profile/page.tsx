@@ -9,6 +9,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useWallet } from "@/context/WalletContext";
 import * as ticketService from "@/services/ticketService";
 import * as winnerService from "@/services/winnerService";
@@ -212,7 +213,11 @@ export default function ProfilePage() {
                     {win.lotteryName}
                   </span>
                   <span className="font-mono font-bold text-[var(--text-primary)]">
-                    {win.prizeAmount} SOL
+                    {win.prizeAmount.toLocaleString(undefined, {
+                      minimumFractionDigits: 6,
+                      maximumFractionDigits: 6,
+                    })}{" "}
+                    SOL
                   </span>
                 </div>
                 <button
@@ -268,7 +273,7 @@ export default function ProfilePage() {
                       Buy-in
                     </span>
                     <span className="font-mono font-bold text-[var(--text-primary)]">
-                      {ticket.price} SOL
+                      {(ticket.price / LAMPORTS_PER_SOL).toFixed(6)} SOL
                     </span>
                   </div>
                 </div>

@@ -3,18 +3,30 @@
 import React from "react";
 import Link from "next/link";
 import { ChevronRight, Ticket } from "lucide-react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { Lottery } from "../types";
 import CountdownTimer from "./CountdownTimer";
+import { getExplorerAddressUrl } from "@/solana/config";
+import { getTokenLotteryPda } from "@/solana/pdas";
+import { ExternalLink } from "lucide-react";
 
 interface LotteryCardProps {
   lottery: Lottery;
 }
 
 export default function LotteryCard({ lottery }: LotteryCardProps) {
-  const percentFilled = Math.min(
-    100,
-    Math.round((lottery.ticketsSold / lottery.totalTickets) * 100),
-  );
+  const ticketPriceSol = lottery.ticketPrice / LAMPORTS_PER_SOL;
+  const hasCap = lottery.maxTickets !== null && lottery.maxTickets > 0;
+  const percentFilled = hasCap
+    ? Math.min(
+        100,
+        Math.round((lottery.ticketsSold / lottery.totalTickets) * 100),
+      )
+    : 0;
+  const lotteryIdNumber = Number(lottery.id);
+  const lotteryPda = Number.isFinite(lotteryIdNumber)
+    ? getTokenLotteryPda(lotteryIdNumber)[0]
+    : null;
 
   return (
     <div className="neu-raised rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden group transition-all duration-300">
@@ -27,7 +39,7 @@ export default function LotteryCard({ lottery }: LotteryCardProps) {
             {lottery.name}
           </h3>
           <span className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] mt-1 block">
-            ID: {lottery.id.split("-").pop()}
+            ID: {lottery.id}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -55,8 +67,8 @@ export default function LotteryCard({ lottery }: LotteryCardProps) {
         </span>
         <h2 className="text-xl sm:text-2xl font-semibold accent-text tracking-tight font-mono truncate w-full text-center">
           {lottery.jackpot.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
+            minimumFractionDigits: 6,
+            maximumFractionDigits: 6,
           })}{" "}
           <span className="text-sm text-[var(--accent-primary)]">SOL</span>
         </h2>
@@ -75,18 +87,25 @@ export default function LotteryCard({ lottery }: LotteryCardProps) {
         )}
 
         {/* Progress bar — clean pill */}
-        <div className="w-full flex flex-col gap-1.5">
+        {hasCap ? (
+          <div className="w-full flex flex-col gap-1.5">
+            <div className="flex justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+              <span>Tickets Sold</span>
+              <span>{percentFilled}% Filled</span>
+            </div>
+            <div className="h-2.5 w-full bg-[rgba(255,255,255,0.04)] rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full accent-bg transition-all duration-1000 ease-out"
+                style={{ width: `${Math.max(percentFilled, 3)}%` }}
+              ></div>
+            </div>
+          </div>
+        ) : (
           <div className="flex justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
             <span>Tickets Sold</span>
-            <span>{percentFilled}% Filled</span>
+            <span>{lottery.ticketsSold.toLocaleString()}</span>
           </div>
-          <div className="h-2.5 w-full bg-[rgba(255,255,255,0.04)] rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full accent-bg transition-all duration-1000 ease-out"
-              style={{ width: `${Math.max(percentFilled, 3)}%` }}
-            ></div>
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between mt-1">
@@ -95,9 +114,20 @@ export default function LotteryCard({ lottery }: LotteryCardProps) {
             Ticket Price
           </span>
           <span className="text-sm font-semibold text-[var(--text-primary)] font-mono">
-            {lottery.ticketPrice} SOL
+            {ticketPriceSol.toFixed(4)} SOL
           </span>
         </div>
+
+        {lotteryPda && (
+          <Link
+            href={getExplorerAddressUrl(lotteryPda.toBase58())}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] hover:text-[var(--accent-primary)] flex items-center gap-1"
+          >
+            Lottery PDA <ExternalLink className="w-3 h-3" />
+          </Link>
+        )}
 
         <Link
           href={`/lotteries/${lottery.id}`}

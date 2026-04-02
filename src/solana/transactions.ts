@@ -23,7 +23,9 @@ export const simulateAndSend = async ({
 
   if (simulation.value.err) {
     const error = JSON.stringify(simulation.value.err);
-    throw new Error(`Simulation failed: ${error}`);
+    const logs = simulation.value.logs ?? [];
+    const logBlock = logs.length ? `\nLogs:\n${logs.join("\n")}` : "";
+    throw new Error(`Simulation failed: ${error}${logBlock}`);
   }
 
   const signature = await sendTransaction(transaction, connection, {

@@ -46,13 +46,14 @@ export default function WinnersPage() {
     }
   }, [isConnected, address]);
 
-  const handleClaim = async (winnerId: string) => {
+  const handleClaim = async (winnerId: string, lotteryId: string) => {
     if (!address) return;
 
     setIsClaiming((prev) => ({ ...prev, [winnerId]: true }));
     try {
       const result = await winnerService.claimPrize({
         winnerId,
+        lotteryId,
         walletAddress: address,
         wallet: {
           publicKey,
@@ -130,11 +131,15 @@ export default function WinnersPage() {
                     {win.lotteryName}
                   </span>
                   <span className="font-mono font-semibold text-[var(--text-primary)]">
-                    {win.prizeAmount} SOL
+                    {win.prizeAmount.toLocaleString(undefined, {
+                      minimumFractionDigits: 6,
+                      maximumFractionDigits: 6,
+                    })}{" "}
+                    SOL
                   </span>
                 </div>
                 <button
-                  onClick={() => handleClaim(win.id)}
+                  onClick={() => handleClaim(win.id, win.lotteryId)}
                   disabled={isClaiming[win.id]}
                   className="accent-bg px-5 py-2 rounded-xl text-white font-bold text-xs tracking-[0.2em] uppercase transition-all disabled:opacity-70 whitespace-nowrap"
                 >
