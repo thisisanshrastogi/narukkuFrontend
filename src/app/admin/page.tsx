@@ -292,17 +292,17 @@ export default function AdminPage() {
       <div className="neu-raised rounded-3xl p-6 md:p-8 flex flex-col gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl neu-inset flex items-center justify-center">
-            <ShieldCheck className="w-6 h-6 text-[var(--accent-primary)]" />
+            <ShieldCheck className="w-6 h-6 text-(--accent-primary)" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-black text-[var(--text-primary)]">
+            <h1 className="text-2xl md:text-3xl font-black text-(--text-primary)">
               Admin Control Room
             </h1>
-            <p className="text-[var(--text-secondary)] text-sm">
+            <p className="text-(--text-secondary) text-sm">
               Initialize the devnet lottery config and collection.
             </p>
           </div>
-          <div className="ml-auto hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] neu-inset-shallow px-3 py-2 rounded-xl">
+          <div className="ml-auto hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-(--text-secondary) neu-inset-shallow px-3 py-2 rounded-xl">
             {cluster}
           </div>
         </div>
@@ -310,12 +310,12 @@ export default function AdminPage() {
 
       {!isConnected && (
         <div className="neu-inset rounded-3xl p-8 flex flex-col gap-4 items-center text-center">
-          <AlertCircle className="w-6 h-6 text-[var(--text-secondary)]" />
+          <AlertCircle className="w-6 h-6 text-(--text-secondary)" />
           <div>
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+            <h2 className="text-lg font-semibold text-(--text-primary)">
               Wallet not connected
             </h2>
-            <p className="text-[var(--text-secondary)] text-sm mt-1">
+            <p className="text-(--text-secondary) text-sm mt-1">
               Connect a devnet wallet to initialize the lottery.
             </p>
           </div>
@@ -333,16 +333,16 @@ export default function AdminPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-7 neu-raised rounded-3xl p-6 md:p-8 flex flex-col gap-6">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-(--text-secondary)">
                 Lottery Configuration
               </h3>
-              <p className="text-[var(--text-secondary)] text-sm mt-2">
+              <p className="text-(--text-secondary) text-sm mt-2">
                 Provide the lottery ID, unix timestamps, and ticket price in
                 lamports.
               </p>
             </div>
 
-            <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
+            <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
               Lottery ID
               <input
                 type="number"
@@ -350,9 +350,9 @@ export default function AdminPage() {
                 step="1"
                 value={lotteryId}
                 onChange={(event) => setLotteryId(event.target.value)}
-                className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-[var(--text-primary)] font-mono"
+                className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-(--text-primary) font-mono"
               />
-              <span className="text-[10px] normal-case tracking-normal text-[var(--text-secondary)]">
+              <span className="text-[10px] normal-case tracking-normal text-(--text-secondary)">
                 {isFetchingGlobalState
                   ? "Checking global state..."
                   : globalStateCount === null
@@ -362,37 +362,37 @@ export default function AdminPage() {
             </label>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
+              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
                 Start Time (unix)
                 <input
                   type="number"
                   min="0"
                   value={startSlot}
                   onChange={(event) => setStartSlot(event.target.value)}
-                  className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-[var(--text-primary)] font-mono"
+                  className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-(--text-primary) font-mono"
                 />
               </label>
-              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
+              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
                 End Time (unix)
                 <input
                   type="number"
                   min="0"
                   value={endSlot}
                   onChange={(event) => setEndSlot(event.target.value)}
-                  className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-[var(--text-primary)] font-mono"
+                  className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-(--text-primary) font-mono"
                 />
               </label>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
-              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
+              <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
                 End Offset (seconds)
                 <input
                   type="number"
                   min="1"
                   value={slotOffset}
                   onChange={(event) => setSlotOffset(event.target.value)}
-                  className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-[var(--text-primary)] font-mono"
+                  className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-(--text-primary) font-mono"
                 />
               </label>
               <button
@@ -403,13 +403,13 @@ export default function AdminPage() {
                 {isFetchingSlot ? "Fetching..." : "Use Current Time"}
               </button>
               {currentSlot !== null && (
-                <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-(--text-secondary)">
                   Current Time: {currentSlot}
                 </span>
               )}
             </div>
 
-            <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
+            <label className="flex flex-col gap-2 text-[11px] uppercase tracking-[0.2em] text-(--text-secondary)">
               Ticket Price (lamports)
               <input
                 type="number"
@@ -417,7 +417,7 @@ export default function AdminPage() {
                 step="1"
                 value={ticketPrice}
                 onChange={(event) => setTicketPrice(event.target.value)}
-                className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-[var(--text-primary)] font-mono"
+                className="neu-inset-shallow rounded-xl px-4 py-3 text-base text-(--text-primary) font-mono"
               />
             </label>
 
@@ -474,10 +474,10 @@ export default function AdminPage() {
 
           <div className="lg:col-span-5 flex flex-col gap-6">
             <div className="neu-raised rounded-3xl p-6 md:p-7 flex flex-col gap-4">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-(--text-secondary)">
                 Collection Setup
               </h3>
-              <p className="text-[var(--text-secondary)] text-sm">
+              <p className="text-(--text-secondary) text-sm">
                 Initialize the collection mint and metadata for ticket NFTs.
               </p>
               <button
@@ -489,11 +489,11 @@ export default function AdminPage() {
               </button>
             </div>
 
-            <div className="neu-inset rounded-3xl p-6 flex flex-col gap-3 text-[var(--text-secondary)] text-sm">
+            <div className="neu-inset rounded-3xl p-6 flex flex-col gap-3 text-(--text-secondary) text-sm">
               <div className="text-[11px] uppercase tracking-[0.2em]">
                 Connected Wallet
               </div>
-              <div className="text-[var(--text-primary)] font-mono break-all">
+              <div className="text-(--text-primary) font-mono break-all">
                 {address}
               </div>
             </div>
@@ -502,21 +502,21 @@ export default function AdminPage() {
       )}
 
       {isSubmitting && (
-        <div className="neu-inset rounded-3xl p-5 flex items-center gap-3 text-[var(--text-secondary)]">
+        <div className="neu-inset rounded-3xl p-5 flex items-center gap-3 text-(--text-secondary)">
           <Loader2 className="w-4 h-4 animate-spin" />
           Sending transaction to {cluster}...
         </div>
       )}
 
       {errorMessage && (
-        <div className="neu-raised rounded-3xl p-5 flex items-center gap-3 text-[var(--accent-secondary)]">
+        <div className="neu-raised rounded-3xl p-5 flex items-center gap-3 text-(--accent-secondary)">
           <AlertCircle className="w-4 h-4" />
           <span className="text-sm">{errorMessage}</span>
         </div>
       )}
 
       {successMessage && (
-        <div className="neu-raised rounded-3xl p-5 flex items-center gap-3 text-[var(--success)]">
+        <div className="neu-raised rounded-3xl p-5 flex items-center gap-3 text-(--success)">
           <CheckCircle className="w-4 h-4" />
           <span className="text-sm">{successMessage}</span>
         </div>
@@ -526,7 +526,7 @@ export default function AdminPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {globalStateTx && (
             <a
-              className="neu-inset rounded-2xl p-4 text-sm text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
+              className="neu-inset rounded-2xl p-4 text-sm text-(--text-secondary) hover:text-(--accent-primary) transition-colors"
               href={`https://explorer.solana.com/tx/${globalStateTx}?cluster=${explorerCluster}`}
               target="_blank"
               rel="noreferrer"
@@ -536,7 +536,7 @@ export default function AdminPage() {
           )}
           {configTx && (
             <a
-              className="neu-inset rounded-2xl p-4 text-sm text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
+              className="neu-inset rounded-2xl p-4 text-sm text-(--text-secondary) hover:text-(--accent-primary) transition-colors"
               href={`https://explorer.solana.com/tx/${configTx}?cluster=${explorerCluster}`}
               target="_blank"
               rel="noreferrer"
@@ -546,7 +546,7 @@ export default function AdminPage() {
           )}
           {collectionTx && (
             <a
-              className="neu-inset rounded-2xl p-4 text-sm text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
+              className="neu-inset rounded-2xl p-4 text-sm text-(--text-secondary) hover:text-(--accent-primary) transition-colors"
               href={`https://explorer.solana.com/tx/${collectionTx}?cluster=${explorerCluster}`}
               target="_blank"
               rel="noreferrer"
