@@ -669,9 +669,7 @@ export const createRandomnessAccount = async ({
     signedByWallet.partialSign(randomnessKeypair);
 
     try {
-      const simulation = await connection.simulateTransaction(signedByWallet, {
-        sigVerify: false,
-      });
+      const simulation = await connection.simulateTransaction(signedByWallet);
 
       if (simulation.value.err) {
         const error = JSON.stringify(simulation.value.err);
